@@ -1009,77 +1009,148 @@ const words = ['a',
 'your',
 'zoo']
 
-import * as readline from 'readline';
+import * as readline from "readline";
 
 
 interface TreeNode {
-  name: string;
   parent: TreeNode | null;
-  combination: string;
-  assignment: Map<string, string>;
+  combination: string;            // decoded text so far
+  assignment: Map<string, string> // cipher → plain
 }
 
+const alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
+
+function applyMapping(input: string, map: Map<string, string>): string {
+  return [...input].map((ch) => {
+    if (/[a-z]/.test(ch)) return map.get(ch) ?? "?";
+    return ch; 
+  }).join("");
+}
+
+function partialValid(decoded: string): boolean {
+  const parts = decoded.split(" ");
+
+  for (const candidate of parts) {
+    if (candidate.includes("?")) continue; // can't check yet
+    if (!words.includes(candidate)) return false;
+  }
+  return true;
+}
+
+
+export function nextTreeNodes(
+  currentNode: TreeNode,
+  inputString: string,
+  currentDepth: number
+): TreeNode[] {
+  const nextNodes: TreeNode[] = [];
+  const cipherChar = inputString[currentDepth];
+
+
+  if (cipherChar === " ") {
+    nextNodes.push({
+      parent: currentNode,
+      combination: currentNode.combination + " ",
+      assignment: new Map(currentNode.assignment)
+    });
+    return nextNodes;
+  }
+
+
+  if (currentNode.assignment.has(cipherChar)) {
+    const mapped = currentNode.assignment.get(cipherChar)!;
+    nextNodes.push({
+      parent: currentNode,
+      combination: currentNode.combination + mapped,
+      assignment: new Map(currentNode.assignment)
+    });
+    return nextNodes;
+  }
+
+
+  const usedPlain = new Set(currentNode.assignment.values());
+
+  for (const plain of alphabet) {
+    if (usedPlain.has(plain)) continue; 
+
+    const newAssign = new Map(currentNode.assignment);
+    newAssign.set(cipherChar, plain);
+
+    nextNodes.push({
+      parent: currentNode,
+      combination: currentNode.combination + plain,
+      assignment: newAssign
+    });
+  }
+
+  return nextNodes;
+}
+
+export function backtracking(inputString: string): string[] {
+
+  const rootNode: TreeNode = {parent: null, combination: "", assignment: new Map()
+  };
+
+  const solutions: string[] = [];
+  const totalLength = inputString.length;
+
+  function depthSearch(node: TreeNode, depth: number) {
+    if (depth === totalLength) {
+      
+      const finalDecoded = node.combination;
+      const valid = finalDecoded
+        .split(" ")
+        .every((w) => words.includes(w));
+
+      if (valid) solutions.push(finalDecoded);
+      return;
+    }
+
+    const decoded = applyMapping(inputString, node.assignment);
+    if (!partialValid(decoded)) return; 
+
+    const nextNodes = nextTreeNodes(node, inputString, depth);
+    for (const next of nextNodes) {
+      depthSearch(next, depth + 1);
+    }
+  }
+
+  depthSearch(rootNode, 0);
+
+  return solutions;
+}
 
 
 export function findMatchingWords(input: string): string[] {
-    const inputLength = input.length;
-    const matchingWords = words.filter(word => word.length === inputLength);
-    return matchingWords;
+//dont think im using this function anymore but this was for my initial idea
+// literally just filters the words array by length
+
+  return words.filter(w => w.length === input.length);
 }
 
-export function buildPattern(word: string): string {
-    const charMap = new Map<string, string>();
-    let pattern = '';
-    let nextCharCode = 'a'.charCodeAt(0);
-    for (const char of word) {
-        if (!charMap.has(char)) {
-            charMap.set(char, String.fromCharCode(nextCharCode));
-            nextCharCode++;
-        }
-        pattern += charMap.get(char);
-    }
-    return pattern;
-}
 
-export function findWordsByPattern(pattern: string, candidateWords: string[]): string[] {
-    const matchingWords: string[] = []; 
-    for (const word of candidateWords) {
-        if (buildPattern(word) === pattern) {
-            matchingWords.push(word);
-        }
-    }
-    return matchingWords;
-}
+export function main() {
+  const userInput = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
 
-export function main(){
+  userInput.question("Please enter a cryptogram: ", (answer: string) => {
+    const input = answer.trim().toLowerCase();
 
-    const UserInput = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-        
-    });
+    console.log(`\nSolving: "${input}"\n`);
 
-    let userInputSaved= '';
+    const results = backtracking(input);
 
-    UserInput.question('please give me a string: \n ', (word: string) => {
-        console.log(`\n you inputted:  \n ${word} \n`);
+    console.log(` ${results.length} solutions:`);
+    console.log(results.length ? results.join("\n") : "None.");
 
-
-        userInputSaved = word;
-        UserInput.close();
-
-        const sameLengthWords = findMatchingWords(userInputSaved);
-        const inputPattern = buildPattern(userInputSaved);
-        const patternMatchedWords = findWordsByPattern(inputPattern, sameLengthWords);
-        console.log(`words that match the length & pattern of your input: \n ${patternMatchedWords} \n`);
-
-    });
-
-    
-
+    userInput.close();
+  });
 }
 
 main();
+
 
     
 
@@ -1087,6 +1158,14 @@ main();
     //thennnn figure out how to filter by the word pattern ?????
     //like if the word is "dad" then the pattern is "aba" so filter the words that match that pattern
     //if user inputs two words, split by space and do the same thing for each word
-    
 
+    //build tree based off letter combinations (root-> every letter of alphabet->they all have their own branch with every alphabet etc)
+    //check if theres any words that match the current combination at each depth (doesnt have to be fully but tgis can stop unnecessary branches early)
+    // like if youre on comnbination 'abth' or somethin- theres no words that start with abth so stop that branch and go back up
+    
+    //tree can have 3 check cases when finding words -> if the input letter is a space, if its been mapped already, if it hasnt been mapped yet
+
+    //if space, just add space to combination and move on
+    //if mapped already, add mapped letter to combination and move on
+    //if not mapped, branch out by mapping it to every letter that hasnt been used yet and move on with each of those new nodes
 
