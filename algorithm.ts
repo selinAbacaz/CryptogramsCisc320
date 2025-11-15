@@ -1021,9 +1021,9 @@ interface TreeNode {
 const alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
 
 function applyMapping(input: string, map: Map<string, string>): string {
-  return [...input].map((ch) => {
-    if (/[a-z]/.test(ch)) return map.get(ch) ?? "?";
-    return ch; 
+  return [...input].map((inputChars) => {
+    if (/[a-z]/.test(inputChars)) return map.get(inputChars) ?? "?";
+    return inputChars; 
   }).join("");
 }
 
@@ -1142,6 +1142,7 @@ export function main() {
 
     const results = backtracking(input);
 
+    
     console.log(` ${results.length} solutions:`);
     console.log(results.length ? results.join("\n") : "None.");
 
